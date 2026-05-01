@@ -155,25 +155,30 @@
   }
 
   function maskPink(image) {
-    const out = document.createElement("canvas");
-    out.width = image.naturalWidth || image.width;
-    out.height = image.naturalHeight || image.height;
-    const local = out.getContext("2d", { willReadFrequently: true });
-    local.drawImage(image, 0, 0);
-    const pixels = local.getImageData(0, 0, out.width, out.height);
-    const data = pixels.data;
+    try {
+      const out = document.createElement("canvas");
+      out.width = image.naturalWidth || image.width;
+      out.height = image.naturalHeight || image.height;
+      const local = out.getContext("2d", { willReadFrequently: true });
+      local.drawImage(image, 0, 0);
+      const pixels = local.getImageData(0, 0, out.width, out.height);
+      const data = pixels.data;
 
-    for (let i = 0; i < data.length; i += 4) {
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
-      if (r > 178 && g < 95 && b > 170) {
-        data[i + 3] = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        if (r > 178 && g < 95 && b > 170) {
+          data[i + 3] = 0;
+        }
       }
-    }
 
-    local.putImageData(pixels, 0, 0);
-    return out;
+      local.putImageData(pixels, 0, 0);
+      return out;
+    } catch (e) {
+      console.warn("Masking failed (CORS restriction).", e);
+      return image;
+    }
   }
 
   async function loadAssets() {
@@ -186,9 +191,14 @@
     }
 
     const musicPromises = Object.entries(MUSIC_ASSETS).map(async ([key, src]) => {
-      const resp = await fetch(src);
-      if (!resp.ok) throw new Error(`Music load failed: ${src} (${resp.status})`);
-      musicData[key] = await resp.arrayBuffer();
+      try {
+        const resp = await fetch(src);
+        if (resp.ok) {
+          musicData[key] = await resp.arrayBuffer();
+        }
+      } catch (e) {
+        console.warn(`Could not fetch ${src} directly.`, e);
+      }
     });
     await Promise.all(musicPromises);
   }
